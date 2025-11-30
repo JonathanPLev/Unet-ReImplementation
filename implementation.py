@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from scipy import ndimage as ndi
 from torchvision import transforms as T
 from torchvision.transforms import InterpolationMode
+from elasticdeform import deform_random_grid
 
 # we are working on the second segmentation task the U-net architecture tested on.
 
@@ -99,8 +100,7 @@ def compute_unet_weight_map(mask, cache_path=None, w0=10.0, sigma=5.0):
 
 def transforms(image, mask, crop_size=572):
     image = T.to_tensor(image)  # 696 x 520
-    weight_mask = T.to_tensor(dtype=torch.long)
-    mask = (weight_mask > 0).astype(np.uint8)
+    mask = torch.as_tensor(mask, dtype=torch.long)
 
     pad_h = max(0, crop_size - image.shape[1])
     # pad_w = max(0, crop_size - image.shape[2])
@@ -115,11 +115,24 @@ def transforms(image, mask, crop_size=572):
 
     if torch.rand(1) > 0.5:
         image = T.hflip(image)
-        mask = T.hflip(mask)
+        mask = T.hflip(mask.unsqueeze(0)).squeeze(0)
 
     if torch.rand(1) > 0.5:
         image = T.vflip(image)
-        mask = T.vflip(mask)
+        mask = T.vflip(mask.unsqueeze(0)).squeeze(0)
+
+    if torch.rand(1) < 0.5:
+        img_np = image.numpy()
+        mask_np = mask.numpy()
+        img_def, mask_def = deform_random_grid(
+            [img_np, mask_np],
+            sigma=10,
+            points=3,
+            order=[3, 0],  # bicubic for image, nearest for mask
+            mode=["reflect", "constant"],
+        )
+        image = torch.from_numpy(img_def).float()
+        mask = torch.from_numpy(mask_def).long()
 
     image = T.normalize(image, mean=[0.5], std=[0.5])
 
