@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
+import torch.optim.lr_scheduler as lr_scheduler
 import torchvision.transforms.functional as TF
 
 from config import (
@@ -9,10 +10,10 @@ from config import (
     EPOCHS,
     LEARNING_RATE,
     MODEL_SAVE_PATH,
-    MOMENTUM_TERM,
     RUN_DETAIL,
 )
 from model import Net
+from loss import DiceLoss
 from utils import IoU_score, dice_score, pixel_accuracy, plot_history
 
 
@@ -20,10 +21,11 @@ def train_u_net(train_loader, val_loader=None):
     net = Net().to(DEVICE)
 
     criterion = nn.CrossEntropyLoss(reduction="none")
+    dice_criterion = DiceLoss()
     weights = [p for name, p in net.named_parameters() if "weight" in name]
     biases = [p for name, p in net.named_parameters() if "bias" in name]
 
-    optimizer = torch.optim.SGD(
+    optimizer = torch.optim.Adam(
         [
             {
                 "params": weights,
@@ -32,7 +34,10 @@ def train_u_net(train_loader, val_loader=None):
             {"params": biases, "weight_decay": 0},  # No weight decay for biases
         ],
         lr=LEARNING_RATE,
-        momentum=MOMENTUM_TERM,
+    )
+
+    scheduler = lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="max", factor=0.1, patience=10, verbose=True
     )
 
     best_val_dice = -1.0
@@ -72,7 +77,9 @@ def train_u_net(train_loader, val_loader=None):
                 ).squeeze(1)
 
             loss_map = criterion(outputs, masks)
-            loss = (loss_map * weight_maps).mean()
+            ce_loss = (loss_map * weight_maps).mean()
+            dice_loss = dice_criterion(outputs, masks)
+            loss = ce_loss + dice_loss
             loss.backward()
             optimizer.step()
 
@@ -113,7 +120,9 @@ def train_u_net(train_loader, val_loader=None):
                         ).squeeze(1)
 
                     loss_map = criterion(outputs, masks)
-                    loss = (loss_map * weight_maps).mean()
+                    ce_loss = (loss_map * weight_maps).mean()
+                    dice_loss = dice_criterion(outputs, masks)
+                    loss = ce_loss + dice_loss
                     v_loss += loss.item()
                     v_dice += dice_score(outputs, masks)
                     v_iou += IoU_score(outputs, masks)
@@ -128,6 +137,8 @@ def train_u_net(train_loader, val_loader=None):
                 best_epoch = epoch
                 torch.save(net.state_dict(), best_model_path)
 
+            scheduler.step(val_dice)
+
         history["train_loss"].append(train_loss)
         history["train_dice"].append(train_dice)
         history["train_iou"].append(train_iou)
@@ -141,6 +152,7 @@ def train_u_net(train_loader, val_loader=None):
             f"Epoch {epoch+1}/{EPOCHS} | "
             f"train_loss={train_loss:.4f} train_dice={train_dice:.4f} "
             f"train_iou={train_iou:.4f} train_pixacc={train_pixel_acc:.4f}"
+            f" | lr={optimizer.param_groups[0]['lr']:.6f}"
             + (
                 f" | val_loss={val_loss:.4f} val_dice={val_dice:.4f} "
                 f"val_iou={val_iou:.4f} val_pixacc={val_pixel_acc:.4f}"

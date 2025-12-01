@@ -39,6 +39,17 @@ class Net(nn.Module):
             in_channels=1024, out_channels=1024, kernel_size=3, stride=1, padding=0
         )
 
+        self.bn1 = nn.BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.bn4 = nn.BatchNorm2d(128)
+        self.bn5 = nn.BatchNorm2d(256)
+        self.bn6 = nn.BatchNorm2d(256)
+        self.bn7 = nn.BatchNorm2d(512)
+        self.bn8 = nn.BatchNorm2d(512)
+        self.bn9 = nn.BatchNorm2d(1024)
+        self.bn10 = nn.BatchNorm2d(1024)
+
         self.dropout = nn.Dropout(p=0.5)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
@@ -83,6 +94,15 @@ class Net(nn.Module):
             in_channels=64, out_channels=64, stride=1, kernel_size=3, padding=0
         )
 
+        self.bn11 = nn.BatchNorm2d(512)
+        self.bn12 = nn.BatchNorm2d(512)
+        self.bn13 = nn.BatchNorm2d(256)
+        self.bn14 = nn.BatchNorm2d(256)
+        self.bn15 = nn.BatchNorm2d(128)
+        self.bn16 = nn.BatchNorm2d(128)
+        self.bn17 = nn.BatchNorm2d(64)
+        self.bn18 = nn.BatchNorm2d(64)
+
         self.out1 = nn.Conv2d(
             in_channels=64,
             out_channels=NUM_OUTPUT_CHANNELS,
@@ -99,27 +119,30 @@ class Net(nn.Module):
                 nn.init.xavier_normal_(m.weight)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
         skip1 = x
         x = self.pool(x)
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn4(self.conv4(x)))
         skip2 = x
         x = self.pool(x)
-        x = F.relu(self.conv5(x))
-        x = F.relu(self.conv6(x))
+        x = F.relu(self.bn5(self.conv5(x)))
+        x = F.relu(self.bn6(self.conv6(x)))
         skip3 = x
         x = self.pool(x)
-        x = F.relu(self.conv7(x))
-        x = F.relu(self.conv8(x))
+        x = F.relu(self.bn7(self.conv7(x)))
+        x = F.relu(self.bn8(self.conv8(x)))
         skip4 = x
         x = self.dropout(x)
         x = self.pool(x)
-        x = F.relu(self.conv9(x))
-        x = F.relu(self.conv10(x))
+        x = F.relu(self.bn9(self.conv9(x)))
+        x = F.relu(self.bn10(self.conv10(x)))
         x = self.dropout(x)
         # end of down sampling
 
@@ -128,32 +151,32 @@ class Net(nn.Module):
         _, _, H, W = x.shape
         skip4_cropped = TF.center_crop(skip4, [H, W])
         x = torch.cat([x, skip4_cropped], dim=1)
-        x = F.relu(self.conv11(x))
-        x = F.relu(self.conv12(x))
+        x = F.relu(self.bn11(self.conv11(x)))
+        x = F.relu(self.bn12(self.conv12(x)))
 
         # up sampling 2
         x = self.up2(x)
         _, _, H, W = x.shape
         skip3_cropped = TF.center_crop(skip3, [H, W])
         x = torch.cat([x, skip3_cropped], dim=1)
-        x = F.relu(self.conv13(x))
-        x = F.relu(self.conv14(x))
+        x = F.relu(self.bn13(self.conv13(x)))
+        x = F.relu(self.bn14(self.conv14(x)))
 
         # up sampling 3
         x = self.up3(x)
         _, _, H, W = x.shape
         skip2_cropped = TF.center_crop(skip2, [H, W])
         x = torch.cat([x, skip2_cropped], dim=1)
-        x = F.relu(self.conv15(x))
-        x = F.relu(self.conv16(x))
+        x = F.relu(self.bn15(self.conv15(x)))
+        x = F.relu(self.bn16(self.conv16(x)))
 
         # up sampling 4
         x = self.up4(x)
         _, _, H, W = x.shape
         skip1_cropped = TF.center_crop(skip1, [H, W])
         x = torch.cat([x, skip1_cropped], dim=1)
-        x = F.relu(self.conv17(x))
-        x = F.relu(self.conv18(x))
+        x = F.relu(self.bn17(self.conv17(x)))
+        x = F.relu(self.bn18(self.conv18(x)))
 
         # output layer
         x = self.out1(x)
