@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torchvision
-from torchvision import DataLoader
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import cv2
@@ -14,6 +13,7 @@ import matplotlib.pyplot as plt
 from scipy import ndimage as ndi
 from torchvision import transforms as T
 from torchvision.transforms import InterpolationMode
+import torchvision.transforms.functional as TF
 from elasticdeform import deform_random_grid
 
 # we are working on the second segmentation task the U-net architecture tested on.
@@ -30,6 +30,7 @@ IMAGE_ROOT = "PhC-C2DH-U373"
 NUM_WORKERS = 4
 BATCH_SIZE = 1  # batch size detailed in the paper
 FLIP_PROBABILITY = 0.5
+LEARNING_RATE = 0.01
 MOMENTUM_TERM = 0.99  # detailed in paper
 NUM_OUTPUT_CHANNELS = 2  # detailed in paper
 EPOCHS = 10
@@ -98,45 +99,55 @@ def compute_unet_weight_map(mask, cache_path=None, w0=10.0, sigma=5.0):
     return w_map.astype(np.float32)  # final weight map
 
 
-def transforms(image, mask, crop_size=572):
-    image = T.to_tensor(image)  # 696 x 520
+def transforms(image, mask, weight_mask, crop_size=572):
+    image = TF.to_tensor(image)  # (C,H,W)
     mask = torch.as_tensor(mask, dtype=torch.long)
+    weight_mask = torch.as_tensor(weight_mask, dtype=torch.long)
 
     pad_h = max(0, crop_size - image.shape[1])
-    # pad_w = max(0, crop_size - image.shape[2])
-
     padding = (0, 0, pad_h // 2, pad_h - (pad_h // 2))
-    image = T.pad(image, padding, padding_mode="reflect")
-    mask = T.pad(mask.unsqueeze(0), padding, fill=0, padding_mode="constant").squeeze(0)
+    image = TF.pad(image, padding, padding_mode="reflect")
+    mask = TF.pad(mask.unsqueeze(0), padding, fill=0, padding_mode="constant").squeeze(
+        0
+    )
+    weight_mask = TF.pad(
+        weight_mask.unsqueeze(0), padding, fill=0, padding_mode="constant"
+    ).squeeze(0)
 
-    i, j, h, w = T.get_params(image, output_size=(crop_size, crop_size))
-    image = T.crop(image, i, j, h, w)
-    mask = T.crop(mask, i, j, h, w)
+    i, j, h, w = T.RandomCrop.get_params(image, output_size=(crop_size, crop_size))
+    image = TF.crop(image, i, j, h, w)
+    mask = TF.crop(mask.unsqueeze(0), i, j, h, w).squeeze(0)
+    weight_mask = TF.crop(weight_mask.unsqueeze(0), i, j, h, w).squeeze(0)
 
     if torch.rand(1) > 0.5:
-        image = T.hflip(image)
-        mask = T.hflip(mask.unsqueeze(0)).squeeze(0)
+        image = TF.hflip(image)
+        mask = TF.hflip(mask.unsqueeze(0)).squeeze(0)
+        weight_mask = TF.hflip(weight_mask.unsqueeze(0)).squeeze(0)
 
     if torch.rand(1) > 0.5:
-        image = T.vflip(image)
-        mask = T.vflip(mask.unsqueeze(0)).squeeze(0)
+        image = TF.vflip(image)
+        mask = TF.vflip(mask.unsqueeze(0)).squeeze(0)
+        weight_mask = TF.vflip(weight_mask.unsqueeze(0)).squeeze(0)
 
     if torch.rand(1) < 0.5:
         img_np = image.numpy()
         mask_np = mask.numpy()
-        img_def, mask_def = deform_random_grid(
-            [img_np, mask_np],
+        weight_np = weight_mask.numpy()
+        img_def, mask_def, weight_def = deform_random_grid(
+            [img_np, mask_np, weight_np],
             sigma=10,
             points=3,
-            order=[3, 0],  # bicubic for image, nearest for mask
-            mode=["reflect", "constant"],
+            order=[3, 0, 0],  # bicubic for image, nearest for masks
+            mode=["reflect", "constant", "constant"],
         )
         image = torch.from_numpy(img_def).float()
         mask = torch.from_numpy(mask_def).long()
+        weight_mask = torch.from_numpy(weight_def).long()
 
-    image = T.normalize(image, mean=[0.5], std=[0.5])
+    image = TF.normalize(image, mean=[0.5], std=[0.5])
+    weight_map = torch.from_numpy(compute_unet_weight_map(weight_mask.numpy())).float()
 
-    return image, mask
+    return image, mask, weight_map
 
 
 class SegmentationDataset(Dataset):
@@ -144,7 +155,6 @@ class SegmentationDataset(Dataset):
         self.image_root = image_root
         self.mask_paths = mask_paths
         self.transforms = transforms
-        self.weight_map_cache = {}
 
     def __len__(self):
         return len(self.mask_paths)
@@ -164,19 +174,10 @@ class SegmentationDataset(Dataset):
 
         image_path = os.path.join(self.image_root, image_folder, f"t{frame_id}.tif")
 
-        image = np.array(Image.open(image_path))
+        image = np.array(Image.open(image_path).convert("L"))
 
         if self.transforms:
-            image, mask = self.transforms(image, mask)
-
-        weight_map_cache = os.path.splitext(label_path)[0] + "_weight_map.npy"
-        if label_path in self.weight_map_cache:
-            weight_map = self.weight_map_cache[label_path]
-        else:
-            weight_map = compute_unet_weight_map(
-                weight_mask, cache_path=weight_map_cache
-            )
-            self.weight_map_cache[label_path] = weight_map
+            image, mask, weight_map = self.transforms(image, mask, weight_mask)
 
         return image, mask, weight_map
 
@@ -186,7 +187,7 @@ class Net(nn.Module):
         # TODO: double check model architecture implementation (Jon)
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(
-            in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=0
+            in_channels=1, out_channels=64, kernel_size=3, stride=1, padding=0
         )
         self.conv2 = nn.Conv2d(
             in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=0
@@ -217,6 +218,7 @@ class Net(nn.Module):
         )
 
         self.dropout = nn.Dropout(p=0.5)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
         # up convolution
         self.up1 = nn.ConvTranspose2d(
@@ -340,7 +342,7 @@ class Net(nn.Module):
 def train_u_net(train_loader, val_loader=None):
     net = Net().to(DEVICE)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction="none")
     weights = [p for name, p in net.named_parameters() if "weight" in name]
     biases = [p for name, p in net.named_parameters() if "bias" in name]
 
@@ -352,8 +354,8 @@ def train_u_net(train_loader, val_loader=None):
             },  # Apply weight decay to weights
             {"params": biases, "weight_decay": 0},  # No weight decay for biases
         ],
-        lr=0.01,
-        momentum=0.99,
+        lr=LEARNING_RATE,
+        momentum=MOMENTUM_TERM,
     )
 
     best_val_dice = -1.0
@@ -380,11 +382,19 @@ def train_u_net(train_loader, val_loader=None):
         for images, masks, weight_maps in train_loader:
             images = images.to(DEVICE, non_blocking=True)
             masks = masks.to(DEVICE, non_blocking=True)
-            if torch.is_tensor(weight_maps):
-                weight_maps = weight_maps.to(DEVICE, non_blocking=True)
+            weight_maps = weight_maps.to(DEVICE, non_blocking=True).float()
             optimizer.zero_grad()
             outputs = net(images)
-            loss = criterion(outputs, masks)
+            _, _, out_h, out_w = outputs.shape
+            if masks.shape[-2:] != (out_h, out_w):
+                masks = TF.center_crop(masks.unsqueeze(1), (out_h, out_w)).squeeze(1)
+            if weight_maps.shape[-2:] != (out_h, out_w):
+                weight_maps = TF.center_crop(
+                    weight_maps.unsqueeze(1), (out_h, out_w)
+                ).squeeze(1)
+
+            loss_map = criterion(outputs, masks)
+            loss = (loss_map * weight_maps).mean()
             loss.backward()
             optimizer.step()
 
@@ -412,10 +422,20 @@ def train_u_net(train_loader, val_loader=None):
                 for images, masks, weight_maps in val_loader:
                     images = images.to(DEVICE, non_blocking=True)
                     masks = masks.to(DEVICE, non_blocking=True)
-                    if torch.is_tensor(weight_maps):
-                        weight_maps = weight_maps.to(DEVICE, non_blocking=True)
+                    weight_maps = weight_maps.to(DEVICE, non_blocking=True).float()
                     outputs = net(images)
-                    loss = criterion(outputs, masks)
+                    _, _, out_h, out_w = outputs.shape
+                    if masks.shape[-2:] != (out_h, out_w):
+                        masks = TF.center_crop(
+                            masks.unsqueeze(1), (out_h, out_w)
+                        ).squeeze(1)
+                    if weight_maps.shape[-2:] != (out_h, out_w):
+                        weight_maps = TF.center_crop(
+                            weight_maps.unsqueeze(1), (out_h, out_w)
+                        ).squeeze(1)
+
+                    loss_map = criterion(outputs, masks)
+                    loss = (loss_map * weight_maps).mean()
                     v_loss += loss.item()
                     v_dice += dice_score(outputs, masks)
                     v_iou += IoU_score(outputs, masks)
@@ -458,39 +478,33 @@ def train_u_net(train_loader, val_loader=None):
 
 
 def dice_score(pred, target, epsilon=1e-6):
-    pred = pred.argmax(dim=1)  # get predicted class
+    pred = pred.argmax(dim=1)
     pred = pred.float()
     target = target.float()
-
-    intersection = (pred * target).sum()
-    union = pred.sum() + target.sum()
-
+    intersection = (pred * target).sum(dim=[1, 2])
+    union = pred.sum(dim=[1, 2]) + target.sum(dim=[1, 2])
     dice = (2.0 * intersection + epsilon) / (union + epsilon)
-    return dice.item()
+    return dice.mean().item()
 
 
 def IoU_score(pred, target, epsilon=1e-6):
-    pred = pred.argmax(dim=1)  # get predicted class
+    pred = pred.argmax(dim=1)
     pred = pred.float()
     target = target.float()
-
-    intersection = (pred * target).sum()
-    union = pred.sum() + target.sum()
-
+    intersection = (pred * target).sum(dim=[1, 2])
+    union = pred.sum(dim=[1, 2]) + target.sum(dim=[1, 2])
     iou = (intersection + epsilon) / (union + epsilon)
-    return iou.item()
+    return iou.mean().item()
 
 
 def pixel_accuracy(pred, target, epsilon=1e-6):
-    pred = pred.argmax(dim=1)  # get predicted class
+    pred = pred.argmax(dim=1)
     pred = pred.float()
     target = target.float()
-
-    intersection = (pred * target).sum()
-    union = pred.sum() + target.sum()
-
+    intersection = (pred * target).sum(dim=[1, 2])
+    union = pred.sum(dim=[1, 2]) + target.sum(dim=[1, 2])
     pixel_accuracy = (intersection + epsilon) / (union + epsilon)
-    return pixel_accuracy.item()
+    return pixel_accuracy.mean().item()
 
 
 def plot_history(history, out_dir="plots"):
