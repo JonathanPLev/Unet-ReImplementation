@@ -1,6 +1,8 @@
 # u-net
 weight_cache/
 u-net-release/
+checkpoints/
+plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
