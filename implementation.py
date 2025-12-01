@@ -27,7 +27,7 @@ if DEVICE.type == "cuda":
     print("Using GPU: ", torch.cuda.get_device_name(0))
 
 IMAGE_ROOT = "PhC-C2DH-U373"
-NUM_WORKERS = 4
+NUM_WORKERS = 12
 BATCH_SIZE = 1  # batch size detailed in the paper
 FLIP_PROBABILITY = 0.5
 LEARNING_RATE = 0.01
@@ -61,10 +61,8 @@ def compute_unet_weight_map(mask, cache_path=None, w0=10.0, sigma=5.0):
     if cache_path is not None and os.path.exists(cache_path):
         return np.load(cache_path)
     h, w = mask.shape
-
-    weight_class = compute_class_weight_map(
-        mask, h, w
-    )  # inverse frequency weights over entire mask
+    binary_mask = (mask > 0).astype(np.uint8)
+    weight_class = compute_class_weight_map(binary_mask, h, w)
     cell_ids = [
         cid for cid in np.unique(mask) if cid != 0
     ]  # collect all non-zero cell ids
@@ -125,17 +123,17 @@ def transforms(image, mask, weight_mask, crop_size=572):
     mask = TF.crop(mask.unsqueeze(0), i, j, h, w).squeeze(0)
     weight_mask = TF.crop(weight_mask.unsqueeze(0), i, j, h, w).squeeze(0)
 
-    if torch.rand(1) > 0.5:
+    if torch.rand(1) > FLIP_PROBABILITY:
         image = TF.hflip(image)
         mask = TF.hflip(mask.unsqueeze(0)).squeeze(0)
         weight_mask = TF.hflip(weight_mask.unsqueeze(0)).squeeze(0)
 
-    if torch.rand(1) > 0.5:
+    if torch.rand(1) > FLIP_PROBABILITY:
         image = TF.vflip(image)
         mask = TF.vflip(mask.unsqueeze(0)).squeeze(0)
         weight_mask = TF.vflip(weight_mask.unsqueeze(0)).squeeze(0)
 
-    if torch.rand(1) < 0.5:
+    if torch.rand(1) < FLIP_PROBABILITY:
         img_np = image.numpy()
         mask_np = mask.numpy()
         weight_np = weight_mask.numpy()
@@ -499,19 +497,17 @@ def IoU_score(pred, target, epsilon=1e-6):
     pred = pred.float()
     target = target.float()
     intersection = (pred * target).sum(dim=[1, 2])
-    union = pred.sum(dim=[1, 2]) + target.sum(dim=[1, 2])
+    pred_sum = pred.sum(dim=[1, 2])
+    target_sum = target.sum(dim=[1, 2])
+    union = pred_sum + target_sum - intersection
     iou = (intersection + epsilon) / (union + epsilon)
     return iou.mean().item()
 
 
-def pixel_accuracy(pred, target, epsilon=1e-6):
+def pixel_accuracy(pred, target):
     pred = pred.argmax(dim=1)
-    pred = pred.float()
-    target = target.float()
-    intersection = (pred * target).sum(dim=[1, 2])
-    union = pred.sum(dim=[1, 2]) + target.sum(dim=[1, 2])
-    pixel_accuracy = (intersection + epsilon) / (union + epsilon)
-    return pixel_accuracy.mean().item()
+    correct = (pred == target).float()
+    return correct.mean().item()
 
 
 def plot_history(history, out_dir="plots"):
