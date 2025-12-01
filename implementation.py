@@ -24,6 +24,7 @@ if DEVICE.type == "cuda":
     torch.backends.cudnn.benchmark = (
         True  # optimize convolution algorithms for current GPU
     )
+    print("Using GPU: ", torch.cuda.get_device_name(0))
 
 IMAGE_ROOT = "PhC-C2DH-U373"
 NUM_WORKERS = 4
@@ -32,7 +33,7 @@ FLIP_PROBABILITY = 0.5
 LEARNING_RATE = 0.01
 MOMENTUM_TERM = 0.99  # detailed in paper
 NUM_OUTPUT_CHANNELS = 2  # detailed in paper
-EPOCHS = 10
+EPOCHS = 100
 
 # TODO: map the image with pixel-wise loss weight so it learns border images. formula 2
 # TODO: implement weight initialization as detailed in the paper
@@ -111,7 +112,6 @@ def transforms(image, mask, weight_mask, crop_size=572):
         pad_w - pad_w // 2,
         pad_h - pad_h // 2,
     )
-    print(f"Image shape: {image.shape}, pad_w: {pad_w}, pad_h: {pad_h}")
     image = TF.pad(image, padding, padding_mode="reflect")
     mask = TF.pad(mask.unsqueeze(0), padding, fill=0, padding_mode="constant").squeeze(
         0
@@ -145,6 +145,7 @@ def transforms(image, mask, weight_mask, crop_size=572):
             points=3,
             order=[3, 0, 0],  # bicubic for image, nearest for masks
             mode=["reflect", "constant", "constant"],
+            axis=[(1, 2), (0, 1), (0, 1)],
         )
         image = torch.from_numpy(img_def).float()
         mask = torch.from_numpy(mask_def).long()
@@ -311,7 +312,7 @@ class Net(nn.Module):
         # up sampling 1
         x = self.up1(x)
         _, _, H, W = x.shape
-        skip4_cropped = F.center_crop(skip4, [H, W])
+        skip4_cropped = TF.center_crop(skip4, [H, W])
         x = torch.cat([x, skip4_cropped], dim=1)
         x = F.relu(self.conv11(x))
         x = F.relu(self.conv12(x))
@@ -319,7 +320,7 @@ class Net(nn.Module):
         # up sampling 2
         x = self.up2(x)
         _, _, H, W = x.shape
-        skip3_cropped = F.center_crop(skip3, [H, W])
+        skip3_cropped = TF.center_crop(skip3, [H, W])
         x = torch.cat([x, skip3_cropped], dim=1)
         x = F.relu(self.conv13(x))
         x = F.relu(self.conv14(x))
@@ -327,7 +328,7 @@ class Net(nn.Module):
         # up sampling 3
         x = self.up3(x)
         _, _, H, W = x.shape
-        skip2_cropped = F.center_crop(skip2, [H, W])
+        skip2_cropped = TF.center_crop(skip2, [H, W])
         x = torch.cat([x, skip2_cropped], dim=1)
         x = F.relu(self.conv15(x))
         x = F.relu(self.conv16(x))
@@ -335,7 +336,7 @@ class Net(nn.Module):
         # up sampling 4
         x = self.up4(x)
         _, _, H, W = x.shape
-        skip1_cropped = F.center_crop(skip1, [H, W])
+        skip1_cropped = TF.center_crop(skip1, [H, W])
         x = torch.cat([x, skip1_cropped], dim=1)
         x = F.relu(self.conv17(x))
         x = F.relu(self.conv18(x))
