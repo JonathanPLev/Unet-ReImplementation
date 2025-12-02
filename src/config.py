@@ -31,7 +31,7 @@ WEIGHT_MAP_CACHE_EXTENSION = ".npy"
 # model/training (detailed in paper)
 NUM_OUTPUT_CHANNELS = 2
 LEARNING_RATE = 1e-4
-EPOCHS = 400
+EPOCHS = 170
 
 # cuda configs
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -37,7 +37,7 @@ def train_u_net(train_loader, val_loader=None):
     )
 
     scheduler = lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="max", factor=0.1, patience=10, verbose=True
+        optimizer, mode="max", factor=0.1, patience=10
     )
 
     best_val_dice = -1.0
