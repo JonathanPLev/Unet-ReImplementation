@@ -22,16 +22,28 @@ def train_u_net(train_loader, val_loader=None):
 
     criterion = nn.CrossEntropyLoss(reduction="none")
     dice_criterion = DiceLoss()
-    weights = [p for name, p in net.named_parameters() if "weight" in name]
-    biases = [p for name, p in net.named_parameters() if "bias" in name]
+    conv_params = []
+    bn_params = []
+    bias_params = []
+    for module in net.modules():
+        if isinstance(module, (nn.Conv2d, nn.ConvTranspose2d)):
+            conv_params.append(module.weight)
+            if module.bias is not None:
+                bias_params.append(module.bias)
+        elif isinstance(module, nn.BatchNorm2d):
+            if module.weight is not None:
+                bn_params.append(module.weight)
+            if module.bias is not None:
+                bn_params.append(module.bias)
 
     optimizer = torch.optim.Adam(
         [
             {
-                "params": weights,
+                "params": conv_params,
                 "weight_decay": 0.0005,
-            },  # Apply weight decay to weights
-            {"params": biases, "weight_decay": 0},  # No weight decay for biases
+            },  # Apply weight decay to conv weights
+            {"params": bn_params, "weight_decay": 0.0},  # No weight decay for BN
+            {"params": bias_params, "weight_decay": 0.0},  # No weight decay for biases
         ],
         lr=LEARNING_RATE,
     )
@@ -75,10 +87,13 @@ def train_u_net(train_loader, val_loader=None):
                 weight_maps = TF.center_crop(
                     weight_maps.unsqueeze(1), (out_h, out_w)
                 ).squeeze(1)
+            weight_maps = weight_maps / (
+                weight_maps.mean(dim=[1, 2], keepdim=True) + 1e-8
+            )
 
             loss_map = criterion(outputs, masks)
             ce_loss = (loss_map * weight_maps).mean()
-            dice_loss = dice_criterion(outputs, masks)
+            dice_loss = dice_criterion(outputs, masks, weight_map=weight_maps)
             loss = ce_loss + dice_loss
             loss.backward()
             optimizer.step()
@@ -118,10 +133,13 @@ def train_u_net(train_loader, val_loader=None):
                         weight_maps = TF.center_crop(
                             weight_maps.unsqueeze(1), (out_h, out_w)
                         ).squeeze(1)
+                    weight_maps = weight_maps / (
+                        weight_maps.mean(dim=[1, 2], keepdim=True) + 1e-8
+                    )
 
                     loss_map = criterion(outputs, masks)
                     ce_loss = (loss_map * weight_maps).mean()
-                    dice_loss = dice_criterion(outputs, masks)
+                    dice_loss = dice_criterion(outputs, masks, weight_map=weight_maps)
                     loss = ce_loss + dice_loss
                     v_loss += loss.item()
                     v_dice += dice_score(outputs, masks)
