@@ -1,6 +1,6 @@
-You can find the fully-implemented original U-net architecture under `orig_implementation_src`. It achieves a Dice score of 86% and an IoU score of 76%. 
+You can find the fully-implemented original U-net architecture under `orig_implementation_src`. It achieves a Dice score of 92% and an IoU score of 82%. 
 
-The reason the final scores are not the same as in the actual paper is that we did not implement cross-validation to find the perfect train/test combination to increase model accuracy for benchmarks. You can see our full result scores/graphs under `orig_implementation_src/plots`.
+The reason the final scores are not the same as in the actual paper is that we did not implement cross-validation to find the perfect train/test combination to increase model accuracy for benchmarks. You can see our full result scores/graphs under `orig_implementation_src/orig_impl_plots`.
 
 ### Instructions
 
