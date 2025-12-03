@@ -11,7 +11,7 @@ MODEL_SAVE_PATH = PROJECT_ROOT / "checkpoints"
 WEIGHT_MAP_CACHE_DIR = PROJECT_ROOT / "weight_cache"
 
 # run save tag
-RUN_DETAIL = "original_implementation"
+RUN_DETAIL = "with_optimizers"
 
 # data loading
 NUM_WORKERS = 12

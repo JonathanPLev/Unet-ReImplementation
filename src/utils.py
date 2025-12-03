@@ -57,3 +57,33 @@ def plot_history(history, out_dir=PLOT_DIR):
     plot_pair("dice", "Dice")
     plot_pair("iou", "IoU")
     plot_pair("pixel_acc", "Pixel Accuracy")
+
+    # Combined 2x2 grid of the same metrics
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig.suptitle("Model Training Metrics", fontsize=14)
+    metric_info = [
+        ("loss", "Loss", axes[0, 0]),
+        ("dice", "Dice", axes[0, 1]),
+        ("iou", "IoU", axes[1, 0]),
+        ("pixel_acc", "Pixel Accuracy", axes[1, 1]),
+    ]
+
+    for metric, ylabel, ax in metric_info:
+        train_vals = history.get(f"train_{metric}", [])
+        val_vals = history.get(f"val_{metric}", [])
+        if not train_vals:
+            continue  # nothing to plot
+        epochs = range(1, len(train_vals) + 1)
+        ax.plot(epochs, train_vals, label="train")
+        if val_vals and val_vals[0] is not None:
+            ax.plot(epochs, val_vals, label="val")
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel(ylabel)
+        ax.set_title(f"{metric} over epochs")
+        ax.grid(True, linestyle="--", alpha=0.4)
+        ax.legend()
+
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    grid_out_path = os.path.join(out_dir, f"metrics_grid_{RUN_DETAIL}.png")
+    fig.savefig(grid_out_path, bbox_inches="tight")
+    plt.close(fig)
