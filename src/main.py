@@ -69,33 +69,39 @@ def build_phc_loaders():
 
 def build_dsb_loaders():
     train_root = Path(DSB2018_TRAIN_ROOT)
-    image_ids = sorted(
-        [
-            p.name
-            for p in train_root.iterdir()
-            if p.is_dir() and (p / "images").exists() and (p / "masks").exists()
-        ]
-    )
-    if not image_ids:
+    samples = []
+    for image_dir in train_root.iterdir():
+        if not image_dir.is_dir():
+            continue
+        images_dir = image_dir / "images"
+        masks_dir = image_dir / "masks"
+        if not images_dir.exists() or not masks_dir.exists():
+            continue
+        image_files = list(images_dir.glob("*.png"))
+        if not image_files:
+            continue
+        image_path = image_files[0]
+        for mask_path in sorted(masks_dir.glob("*.png")):
+            samples.append((image_path, mask_path))
+
+    if not samples:
         raise FileNotFoundError(
             f"No training folders found under {train_root}. "
             "Ensure the Kaggle stage1_train directory is extracted there."
         )
 
     rng = np.random.default_rng(seed=42)
-    rng.shuffle(image_ids)
-    split_idx = max(1, int(0.2 * len(image_ids)))
-    val_ids = image_ids[:split_idx]
-    train_ids = image_ids[split_idx:]
+    rng.shuffle(samples)
+    split_idx = max(1, int(0.2 * len(samples)))
+    val_samples = samples[:split_idx]
+    train_samples = samples[split_idx:]
 
     train_dataset = DataScienceBowlDataset(
-        dataset_root=train_root,
-        image_ids=train_ids,
+        samples=train_samples,
         transforms=dataset_transforms,
     )
     val_dataset = DataScienceBowlDataset(
-        dataset_root=train_root,
-        image_ids=val_ids,
+        samples=val_samples,
         transforms=dataset_transforms,
     )
     train_loader = DataLoader(

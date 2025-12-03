@@ -128,50 +128,37 @@ class SegmentationDataset(Dataset):
 class DataScienceBowlDataset(Dataset):
     """
     Dataset for the Data Science Bowl 2018 nuclei segmentation task.
-    Expects the Kaggle stage1_train folder structure:
-    root/<image_id>/images/<image_id>.png and root/<image_id>/masks/*.png
+    Each item corresponds to a single nucleus mask file paired with its image.
+    Expects root/<image_id>/images/<image_id>.png and root/<image_id>/masks/*.png
     """
 
     def __init__(
-        self, dataset_root, image_ids, transforms, weight_cache_dir=WEIGHT_MAP_CACHE_DIR
+        self, samples, transforms, weight_cache_dir=WEIGHT_MAP_CACHE_DIR
     ):
-        self.dataset_root = Path(dataset_root)
-        self.image_ids = list(image_ids)
+        self.samples = samples  # list of (image_path, mask_path)
         self.transforms = transforms
         self.weight_cache_dir = Path(weight_cache_dir) / "dsb2018"
 
     def __len__(self):
-        return len(self.image_ids)
-
-    def _load_instance_mask(self, mask_dir, image_shape):
-        mask_paths = sorted(mask_dir.glob("*.png"))
-        if not mask_paths:
-            raise FileNotFoundError(f"No masks found in {mask_dir}")
-
-        h, w = image_shape
-        instance_mask = np.zeros((h, w), dtype=np.uint16)
-        for idx, mask_path in enumerate(mask_paths, start=1):
-            mask = np.array(Image.open(mask_path))
-            if mask.ndim == 3:  # some masks are RGB
-                mask = mask[:, :, 0]
-            instance_mask[mask > 0] = idx
-        return instance_mask
+        return len(self.samples)
 
     def __getitem__(self, idx):
-        image_id = self.image_ids[idx]
-        image_dir = self.dataset_root / image_id
-        image_path = image_dir / "images" / f"{image_id}.png"
+        image_path, mask_path = self.samples[idx]
         image = np.array(Image.open(image_path).convert("L"))
+        mask = np.array(Image.open(mask_path))
+        if mask.ndim == 3:
+            mask = mask[:, :, 0]
+        binary_mask = (mask > 0).astype(np.uint8)
 
-        mask_dir = image_dir / "masks"
-        instance_mask = self._load_instance_mask(mask_dir, image.shape[:2])
-
-        cache_path = self.weight_cache_dir / f"{image_id}.npy"
-        weight_map = compute_unet_weight_map(instance_mask, cache_path=str(cache_path))
+        cache_rel = Path(mask_path).relative_to(Path(image_path).parents[1])
+        cache_path = self.weight_cache_dir / cache_rel.with_suffix(".npy")
+        weight_map = compute_unet_weight_map(binary_mask, cache_path=str(cache_path))
 
         if self.transforms:
-            image, mask, weight_map = self.transforms(image, instance_mask, weight_map)
+            image, mask_out, weight_map = self.transforms(
+                image, binary_mask, weight_map
+            )
         else:
-            mask = (instance_mask > 0).astype(np.uint8)
+            mask_out = binary_mask
 
-        return image, mask, weight_map
+        return image, mask_out, weight_map
