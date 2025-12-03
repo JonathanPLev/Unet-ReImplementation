@@ -138,7 +138,7 @@ def train_u_net(train_loader, val_loader=None):
         history["val_pixel_acc"].append(val_pixel_acc)
 
         print(
-            f"Epoch {epoch+1}/{EPOCHS} | "
+            f"Epoch {epoch + 1}/{EPOCHS} | "
             f"train_loss={train_loss:.4f} train_dice={train_dice:.4f} "
             f"train_iou={train_iou:.4f} train_pixacc={train_pixel_acc:.4f}"
             + (
@@ -150,6 +150,6 @@ def train_u_net(train_loader, val_loader=None):
         )
 
     if best_epoch >= 0:
-        print(f"Best val_dice={best_val_dice:.4f} at epoch {best_epoch+1}")
+        print(f"Best val_dice={best_val_dice:.4f} at epoch {best_epoch + 1}")
         print(f"Saved best model to {best_model_path}")
     plot_history(history)
