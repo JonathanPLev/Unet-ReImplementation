@@ -1,3 +1,9 @@
+You can find the fully-implemented original U-net architecture under `orig_implementation_src`. It achieves a Dice score of 86% and an IoU score of 76%. 
+
+The reason the final scores are not the same as in the actual paper is that we did not implement cross-validation to find the perfect train/test combination to increase model accuracy for benchmarks. You can see our full result scores/graphs under `orig_implementation_src/plots`.
+
+### Instructions
+
 To get the dataset, unzip the PhC-C2DH-U373.zip file in the data folder.
 
 .tif files are the input image, and the label is man_seg000.tif
