@@ -2,7 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from config import PLOT_DIR, RUN_DETAIL
+from config import PLOT_DIR, PLOT_PREFIX, RUN_DETAIL
 
 
 def dice_score(pred, target, epsilon=1e-6):
@@ -49,7 +49,7 @@ def plot_history(history, out_dir=PLOT_DIR):
         plt.title(f"{metric} over epochs")
         plt.legend()
         plt.grid(True, linestyle="--", alpha=0.4)
-        out_path = os.path.join(out_dir, f"{metric}_{RUN_DETAIL}.png")
+        out_path = os.path.join(out_dir, f"{PLOT_PREFIX}_{metric}_{RUN_DETAIL}.png")
         plt.savefig(out_path, bbox_inches="tight")
         plt.close()
 

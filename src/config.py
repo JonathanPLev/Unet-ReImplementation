@@ -7,13 +7,19 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
 PHC_IMAGE_ROOT = PROJECT_ROOT / "PhC-C2DH-U373"
 DSB2018_TRAIN_ROOT = PROJECT_ROOT / "data-science-bowl-2018" / "stage1_train"
-PLOT_DIR = PROJECT_ROOT / "plots"
 MODEL_SAVE_PATH = PROJECT_ROOT / "checkpoints"
 WEIGHT_MAP_CACHE_DIR = PROJECT_ROOT / "weight_cache"
+PLOT_DIR_BASE = PROJECT_ROOT / "plots"
 
 # dataset selection
 # options: "phc-u373" (default), "data-science-bowl-2018"
-DATASET_CHOICE = "phc-u373"
+DATASET_CHOICE = "data-science-bowl-2018"
+PLOT_DIR = (
+    PLOT_DIR_BASE / "phc_train"
+    if DATASET_CHOICE == "phc-u373"
+    else PLOT_DIR_BASE / "2018_train"
+)
+PLOT_PREFIX = "phc-u373" if DATASET_CHOICE == "phc-u373" else "dsb2018"
 
 # run save tag
 RUN_DETAIL = "original_implementation"
