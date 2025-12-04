@@ -4,8 +4,8 @@ u-net-release/
 checkpoints/
 plots/
 orig_impl_weight_cache/
-orig_impl_checkpoints/
 data-science-bowl-2018/
+data-science-bowl-2018.zip
 
 # Mac
 .DS_Store

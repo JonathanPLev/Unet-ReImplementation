@@ -8,6 +8,10 @@ To get the dataset, unzip the PhC-C2DH-U373.zip file in the data folder.
 
 .tif files are the input image, and the label is man_seg000.tif
 
+To pull the original model, you will need to run `git lfs install` and then `git lfs pull`, and it should appear in `orig_impl_checkpoints`.
+
+To run inference of the initial U-net model, run `orig_implementation_src/inference.py`. An example of an inference run can be found in `orig_implementation_src/inference_example/inference_example.png`.
+
 ## Training on Data Science Bowl 2018
 
 1) Download the `stage1_train.zip` split from the Kaggle competition (https://www.kaggle.com/competitions/data-science-bowl-2018/data).  
