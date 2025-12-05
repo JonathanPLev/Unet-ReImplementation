@@ -57,28 +57,28 @@ def transforms(image, instance_mask, weight_map=None, crop_size=CROP_SIZE):
         instance_mask = TF.vflip(instance_mask.unsqueeze(0)).squeeze(0)
         weight_map = TF.vflip(weight_map.unsqueeze(0)).squeeze(0)
 
-    if torch.rand(1) < FLIP_PROBABILITY:
-        img_np = image.numpy()
-        inst_np = instance_mask.numpy()
-        weight_np = weight_map.numpy()
-        img_def, inst_def, weight_def = deform_random_grid(
-            [img_np, inst_np, weight_np],
-            sigma=DEFORM_SIGMA,
-            points=DEFORM_POINTS,
-            order=[
-                3,
-                0,
-                1,
-            ],  # bicubic for image, nearest for mask, bilinear for weights
-            mode=["reflect", "constant", "reflect"],
-            axis=[(1, 2), (0, 1), (0, 1)],
-        )
-        image = torch.from_numpy(img_def).float()
-        instance_mask = torch.from_numpy(inst_def).long()
-        weight_map = torch.from_numpy(weight_def).float()
+    # if torch.rand(1) < FLIP_PROBABILITY:
+    #     img_np = image.numpy()
+    #     inst_np = instance_mask.numpy()
+    #     weight_np = weight_map.numpy()
+    #     img_def, inst_def, weight_def = deform_random_grid(
+    #         [img_np, inst_np, weight_np],
+    #         sigma=DEFORM_SIGMA,
+    #         points=DEFORM_POINTS,
+    #         order=[
+    #             3,
+    #             0,
+    #             1,
+    #         ],  # bicubic for image, nearest for mask, bilinear for weights
+    #         mode=["reflect", "constant", "reflect"],
+    #         axis=[(1, 2), (0, 1), (0, 1)],
+    #     )
+    #     image = torch.from_numpy(img_def).float()
+    #     instance_mask = torch.from_numpy(inst_def).long()
+    #     weight_map = torch.from_numpy(weight_def).float()
 
-    image = TF.normalize(image, mean=[0.5], std=[0.5])
-    mask = (instance_mask > 0).long()
+    # image = TF.normalize(image, mean=[0.5], std=[0.5])
+    # mask = (instance_mask > 0).long()
 
     return image, mask, weight_map
 
