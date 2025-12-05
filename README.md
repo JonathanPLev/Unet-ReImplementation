@@ -12,6 +12,15 @@ To pull the original model, you will need to run `git lfs install` and then `git
 
 To run inference of the initial U-net model, run `orig_implementation_src/inference.py`. An example of an inference run can be found in `orig_implementation_src/inference_example/inference_example.png`.
 
+## Dependency installation
+Install UV if not installed already: 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+
+Create and sync the environment: 'uv sync'
+
+To run files inside the appropriate environment/folder: 
+cd into the folder and run 'uv run python main.py'
+
+
 ## Training on Data Science Bowl 2018
 
 1) Download the `stage1_train.zip` split from the Kaggle competition (https://www.kaggle.com/competitions/data-science-bowl-2018/data).  
