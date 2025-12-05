@@ -9,7 +9,7 @@ PHC_IMAGE_ROOT = PROJECT_ROOT / "PhC-C2DH-U373"
 DSB2018_TRAIN_ROOT = PROJECT_ROOT / "data-science-bowl-2018" / "stage1_train"
 MODEL_SAVE_PATH = PROJECT_ROOT / "checkpoints"
 WEIGHT_MAP_CACHE_DIR = PROJECT_ROOT / "weight_cache"
-PLOT_DIR_BASE = PROJECT_ROOT / "plots"
+PLOT_DIR_BASE = BASE_DIR / "plots"
 
 # dataset selection
 # options: "phc-u373" (default), "data-science-bowl-2018"
