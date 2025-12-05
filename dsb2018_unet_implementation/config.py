@@ -25,7 +25,7 @@ PLOT_PREFIX = "phc-u373" if DATASET_CHOICE == "phc-u373" else "dsb2018"
 DSB_MAX_MASKS_PER_IMAGE = None
 
 # run save tag
-RUN_DETAIL = "original_implementation"
+RUN_DETAIL = "dsb2018_optimized"
 
 # data loading
 NUM_WORKERS = 12
