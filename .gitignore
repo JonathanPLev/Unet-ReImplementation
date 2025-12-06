@@ -6,7 +6,8 @@ plots/
 orig_impl_weight_cache/
 data-science-bowl-2018/
 data-science-bowl-2018.zip
-
+__MACOSX/
+.uv_cache/
 # Mac
 .DS_Store
 
