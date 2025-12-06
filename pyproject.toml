@@ -1,5 +1,5 @@
 [project]
-name = "resnet-reimplementation"
+name = "unet-reimplementation"
 version = "0.1.0"
 description = "We provide a project to reimplement the U-Net architecture for cell segmentation."
 readme = "README.md"
