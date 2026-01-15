@@ -1,44 +1,154 @@
-You can find the fully-implemented original U-net architecture under `orig_implementation_src`. It achieves a Dice score of 92% and an IoU score of 82%. 
+# U-Net Reimplementation for Cell Segmentation
 
-The reason the final scores are not the same as in the actual paper is that we did not implement cross-validation to find the perfect train/test combination to increase model accuracy for benchmarks. You can see our full result scores/graphs under `orig_implementation_src/orig_impl_plots`.
+This project provides a comprehensive reimplementation of the U-Net architecture for biomedical image segmentation, specifically focusing on cell segmentation tasks. The implementation includes both the original U-Net architecture and improved versions with modern optimizations.
 
-### Instructions
+## Project Overview
 
-To get the dataset, unzip the PhC-C2DH-U373.zip file in the data folder.
+U-Net is a convolutional neural network architecture designed for biomedical image segmentation. This project reimplements the original paper's architecture and extends it with modern training techniques and optimizations. The implementation achieves competitive performance on cell segmentation datasets including the PhC-C2DH-U373 dataset and the Data Science Bowl 2018 challenge.
 
-.tif files are the input image, and the label is man_seg000.tif
+### Key Features
 
-To pull the original model, you will need to run `git lfs install` and then `git lfs pull`, and it should appear in `orig_impl_checkpoints`.
+- Original U-Net architecture implementation
+- Improved U-Net with modern optimizers and techniques
+- Support for multiple datasets (PhC-C2DH-U373, Data Science Bowl 2018)
+- Comprehensive training and inference pipelines
+- Performance evaluation and visualization tools
 
-To run inference of the initial U-net model, run `orig_implementation_src/inference.py`. An example of an inference run can be found in `orig_implementation_src/inference_example/inference_example.png`.
+## Installation
 
-## Dependency installation
-Install UV if not installed already: 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+### Prerequisites
 
-Create and sync the environment: 'uv sync'
+- Python 3.11+
+- NVIDIA GPU with at least 6GB VRAM (recommended)
+- CUDA 12.1+ (for GPU acceleration)
 
-To run files inside the appropriate environment/folder: 
-cd into the folder and run 'uv run python main.py'
+### Using UV (Recommended)
 
+1. **Install UV** (if not already installed):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
 
-## Training on Data Science Bowl 2018
+2. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd Resnet-ReImplementation
+   ```
 
-1) Download the `stage1_train.zip` split from the Kaggle competition (https://www.kaggle.com/competitions/data-science-bowl-2018/data).  
-2) Extract it to `data-science-bowl-2018/stage1_train` at the project root, so you have folders like `data-science-bowl-2018/stage1_train/<image_id>/{images,masks}`.  
-3) In `src/config.py`, set `DATASET_CHOICE = "data-science-bowl-2018"` and adjust `DSB2018_TRAIN_ROOT` if you placed the data elsewhere.  
-4) Run `python -m src.main` to start training on the Kaggle dataset using the existing U-Net pipeline, or `python -m src.train_2018` if you prefer the dedicated entrypoint.
+3. **Create and sync the environment**:
+   ```bash
+   uv sync
+   ```
 
-## Training on PhC-C2DH-U373
+4. **Pull large files** (for original model checkpoints):
+   ```bash
+   git lfs install
+   git lfs pull
+   ```
 
-To train the improved U-Net on PhC-C2DH-U373, run `python -m src.main`
-Unzip the dataset into 'data/PhC-C2DH-U373'
-In src/config.py, set DATASET_CHOICE = "phc-u373"
-Run uv run python -m src.main
+### Running the Code
 
-## Recommended System Requirements
+To run any Python file in the appropriate environment:
+```bash
+cd <directory>
+uv run python <script_name>.py
+```
 
-- Python 3.10+
-- Recommended: NVIDIA GPU with at least 6GB VRAM
-- Tested on: CUDA 12.1, PyTorch 2.3
+## Quick Start
 
-Training the PhC dataset takes ~10–15 minutes on an RTX 3060.
+### 1. Dataset Setup
+
+#### PhC-C2DH-U373 Dataset
+1. Download the PhC-C2DH-U373.zip file
+2. Extract it to `data/PhC-C2DH-U373/`
+3. The dataset contains:
+   - `.tif` files as input images
+   - `man_seg000.tif` files as ground truth labels
+
+#### Data Science Bowl 2018 Dataset
+1. Download `stage1_train.zip` from [Kaggle](https://www.kaggle.com/competitions/data-science-bowl-2018/data)
+2. Extract to `data-science-bowl-2018/stage1_train/`
+3. Ensure structure: `data-science-bowl-2018/stage1_train/<image_id>/{images,masks}`
+
+### 2. Configuration
+
+In `src/config.py`, set your preferred dataset:
+```python
+DATASET_CHOICE = "phc-u373"  # or "data-science-bowl-2018"
+```
+
+### 3. Training
+
+#### Train on PhC-C2DH-U373
+```bash
+uv run python -m src.main
+```
+
+#### Train on Data Science Bowl 2018
+```bash
+uv run python -m src.main
+# or alternatively:
+uv run python -m src.train_2018
+```
+
+### 4. Testing and Inference
+
+#### Original U-Net Inference
+```bash
+cd orig_implementation_src
+uv run python inference.py
+```
+An example inference result can be found in `orig_implementation_src/inference_example/inference_example.png`.
+
+#### Testing Trained Models
+Run the appropriate test scripts in the `src/` directory to evaluate model performance on test datasets.
+
+## Results
+
+### Performance Metrics
+
+The original U-Net implementation achieves:
+- **Dice Score**: 92%
+- **IoU Score**: 82%
+
+*Note: The final scores may differ from the original paper due to the absence of cross-validation for optimal train/test splits.*
+
+### Visualization
+
+Result plots and graphs are available in `orig_implementation_src/orig_impl_plots/`. Use `create_plots.py` to generate additional visualizations of training progress and model performance.
+
+## Report
+
+For detailed methodology, experimental results, and analysis, refer to our project report:
+- **Project Report**: `ECS 174 Project_ U-Net Presentation.pdf`
+
+## Project Structure
+
+```
+Resnet-ReImplementation/
+├── src/                          # Main implementation
+├── orig_implementation_src/      # Original U-Net implementation
+├── orig_impl_checkpoints/        # Pre-trained model checkpoints
+├── data/                         # Dataset storage
+├── dsb2018_unet_implementation/  # Data Science Bowl specific implementation
+├── unet_implementation_with_optimizers/  # Optimized versions
+└── create_plots.py              # Visualization utilities
+```
+
+## System Requirements
+
+- **Python**: 3.11+
+- **GPU**: NVIDIA GPU with 6GB+ VRAM (recommended)
+- **CUDA**: 12.1+
+- **PyTorch**: 2.9.1+
+
+## Dependencies
+
+Key dependencies include:
+- PyTorch & torchvision
+- NumPy
+- Matplotlib
+- Elastic deform (for data augmentation)
+- Kaggle API (for dataset download)
+
+All dependencies are automatically managed by UV through `pyproject.toml`.
