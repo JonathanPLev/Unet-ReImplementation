@@ -32,7 +32,7 @@ U-Net is a convolutional neural network architecture designed for biomedical ima
 2. **Clone the repository**:
    ```bash
    git clone <repository-url>
-   cd Resnet-ReImplementation
+   cd Unet-ReImplementation
    ```
 
 3. **Create and sync the environment**:
@@ -60,7 +60,7 @@ uv run python <script_name>.py
 
 #### PhC-C2DH-U373 Dataset
 1. Download the PhC-C2DH-U373.zip file
-2. Extract it to `data/PhC-C2DH-U373/`
+2. Extract it to `PhC-C2DH-U373/`
 3. The dataset contains:
    - `.tif` files as input images
    - `man_seg000.tif` files as ground truth labels
@@ -72,7 +72,7 @@ uv run python <script_name>.py
 
 ### 2. Configuration
 
-In `src/config.py`, set your preferred dataset:
+In `orig_implementation_src/config.py`, set your preferred dataset:
 ```python
 DATASET_CHOICE = "phc-u373"  # or "data-science-bowl-2018"
 ```
@@ -81,14 +81,12 @@ DATASET_CHOICE = "phc-u373"  # or "data-science-bowl-2018"
 
 #### Train on PhC-C2DH-U373
 ```bash
-uv run python -m src.main
+uv run python -m orig_implementation_src.main
 ```
 
 #### Train on Data Science Bowl 2018
 ```bash
-uv run python -m src.main
-# or alternatively:
-uv run python -m src.train_2018
+uv run python -m orig_implementation_src.train_2018
 ```
 
 ### 4. Testing and Inference
@@ -101,7 +99,7 @@ uv run python inference.py
 An example inference result can be found in `orig_implementation_src/inference_example/inference_example.png`.
 
 #### Testing Trained Models
-Run the appropriate test scripts in the `src/` directory to evaluate model performance on test datasets.
+Run the appropriate test scripts in the `orig_implementation_src/` directory to evaluate model performance on test datasets.
 
 ## Results
 
@@ -125,14 +123,12 @@ For detailed methodology, experimental results, and analysis, refer to our proje
 ## Project Structure
 
 ```
-Resnet-ReImplementation/
-├── src/                          # Main implementation
+Unet-ReImplementation/
 ├── orig_implementation_src/      # Original U-Net implementation
 ├── orig_impl_checkpoints/        # Pre-trained model checkpoints
 ├── data/                         # Dataset storage
 ├── dsb2018_unet_implementation/  # Data Science Bowl specific implementation
 ├── unet_implementation_with_optimizers/  # Optimized versions
-└── create_plots.py              # Visualization utilities
 ```
 
 ## System Requirements
@@ -143,12 +139,5 @@ Resnet-ReImplementation/
 - **PyTorch**: 2.9.1+
 
 ## Dependencies
-
-Key dependencies include:
-- PyTorch & torchvision
-- NumPy
-- Matplotlib
-- Elastic deform (for data augmentation)
-- Kaggle API (for dataset download)
 
 All dependencies are automatically managed by UV through `pyproject.toml`.
